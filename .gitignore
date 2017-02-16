@@ -1,0 +1,11 @@
+#data directory
+data/
+
+#image directory
+images/
+
+#numpy files
+*.npy
+
+#misc
+.DS_Store
