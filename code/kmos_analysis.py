@@ -4,7 +4,7 @@ the underlying distribution of the pixel values.
 
 Created By: Laurence Routledge
 Created On: 15/11/2016
-Last Modified: 30/11/2016
+Last Modified: 16/02/2017
 """
 
 import os
@@ -15,143 +15,155 @@ import matplotlib.pyplot as plt
 from astropy.io import fits
 from scipy.interpolate import spline
 
-month='oct'
-
-os.chdir("/Data/routledge/KMOS/data/oct")    #directory containing the data
-'''
-def use_pixel_range(lower, upper):
-    all_data = []
-    
-    for i in range(max_range):
-        data = fits.getdata(fits_files[i])[lower:upper, lower:upper]
-        all_data.append((data - means[lower:upper, lower:upper]) /
-                        sds[lower:upper, lower:upper])
-
-    all_data = np.array(all_data)
-
-    plt.figure()
-    for i in range(upper - lower):
-        print i
-        for j in range(upper - lower):
-            dat = all_data[:,i,j]
-            bins = np.arange(-5.25, 5.75, 0.75)
-            hist, bin_edges = np.histogram(dat,bins)
-            plt.plot(bin_edges[:-1]+0.375, hist)
-            
-    plt.title("Histogram showing spread of 'true' zero values for single pixels")
-    plt.xlabel("Pixel value")
-    plt.ylabel("Count")
-    plt.ylim(0,70)
-    plt.savefig("../../images/"+str(month)+"true-zeros.png")
-
-    plt.show()
-
-def use_pixel_values(i_vals, j_vals, extension):
-    all_data = []
-    for j in range(max_range):
-        print j
-        data = fits.getdata(fits_files[j])
-        im_data=[]
-
-        for i in range(len(i_vals)):
-            im_data.append(data[i_vals[i],j_vals[i]])
-        all_data.append((im_data - means[i_vals[i], j_vals[i]]) /
-                        sds[i_vals[i], j_vals[i]])
-
-    all_data = np.array(all_data)
-    
-    plt.figure()
-    for k in range(len(i_vals)):
-        dat = all_data[:,k]
-        bins = np.arange(-5, 6, 1)
-        hist, bin_edges = np.histogram(dat,bins)
-        plt.plot(bin_edges[:-1]+0.5, hist)
-
-    plt.title("Histogram showing spread of 'true' zero values for single "+str(extension)+" pixels")
-    plt.xlabel("Pixel value")
-    plt.ylabel("Count")
-    plt.ylim(0,70)
-    plt.savefig("../../images/"+str(month)+"true-zeros-"+str(extension)+".png")
-        
-    plt.show()
-'''
-
-fits_files = glob("*.fits")         #gets all the fits files
-max_range = len(fits_files)
-
-print "Number of fits files: ", max_range
+month='sept'
+os.chdir("/Data/routledge/KMOS/data/"+str(month))    #directory containing the data
 
 #load in the mean and variance data (see 'kmos.py')
-means = np.load("means.npy")
-var = np.load("var.npy")
-sds = np.sqrt(var)                  #convert to standard deviation
+all_means=np.zeros((3,2048,2048))
+all_means[0,:,:]=np.load('means_det_1.npy')
+all_means[1,:,:]=np.load('means_det_2.npy')
+all_means[2,:,:]=np.load('means_det_3.npy')
 
-means_ref = np.concatenate((means[0:4,0:2047].flatten(), means[2044:2047,0:2047].flatten(),\
-            means[4:2044,0:4].flatten(), means[4:2044,2044:2047].flatten()))
+all_vars=np.zeros((3,2048,2048))
+all_vars[0,:,:]=np.load('var_det_1.npy')
+all_vars[1,:,:]=np.load('var_det_2.npy')
+all_vars[2,:,:]=np.load('var_det_3.npy')
 
-sds_ref = np.concatenate((sds[0:4,0:2047].flatten(), sds[2044:2047,0:2047].flatten(),\
-            sds[4:2044,0:4].flatten(), sds[4:2044,2044:2047].flatten()))
+all_sds=np.sqrt(all_vars)               #convert to sd
 
-sds_sorted = sds.reshape(2048*2048)
-sds_sorted = sorted(sds_sorted)
+def means(det='all'):
+    '''
+    Function to extract the pixel means from the non-reference pixels
+    Inputs:
+    det: which detector to use (default is all)
+    '''
+    det=str(det)
+    means_cent = all_means[:,4:2044,4:2044]
 
-i_high, j_high, i_low, j_low, i_med, j_med = [], [], [], [], [], []
+    if det=='all':
+        means_cent = means_cent.flatten()
+    elif det=='1':
+        means_cent = means_cent[0].flatten()
+    elif det=='2':
+        means_cent = means_cent[1].flatten()
+    elif det=='3':
+        means_cent = means_cent[2].flatten()
+    return means_cent
+        
+def means_ref(det='all'):
+    '''
+    Function to extract just the reference pixel means
+    Inputs:
+    det: which detector to use (default is all)
+    '''
+    det=str(det)
+    means_ref_1 = np.concatenate((all_means[0,2044:2047,:].flatten(), all_means[0,4:2044,0:4].flatten()))
+    means_ref_2 = np.concatenate((all_means[1,2044:2047,:].flatten(), all_means[1,4:2044,0:4].flatten(),\
+                                  all_means[1,4:2044,2044:2047].flatten()))
+    means_ref_3 = np.concatenate((all_means[2,2044:2047,:].flatten(), all_means[2,4:2044,0:4].flatten(),\
+                                  all_means[2,4:2044,2044:2047].flatten()))
+    means_ref_3_sides = np.concatenate((all_means[2,4:2044,2044:2047].flatten(), all_means[2,4:2044,0:4].flatten()))
+    means_ref_3_top = all_means[2,2044:2047,:].flatten()
+    if det=='all':
+        means_ref_data = np.concatenate((means_ref_1, means_ref_2, means_ref_3))
+    elif det=='1':
+        means_ref_data = means_ref_1
+    elif det=='2':
+        means_ref_data = means_ref_2
+    elif det=='3':
+        means_ref_data = means_ref_3
+    return means_ref_data
+        
+def sds(det='all'):
+    '''
+    Function to extract the pixel sandard deviations from the non-reference pixels
+    Inputs:
+    det: which detector to use (default is all)
+    '''
+    det=str(det)
+    sds_cent = all_sds[:,4:2044,4:2044]
 
-for val in range(100):
-    i_high.append(np.where(sds == sds_sorted[-50000-val])[0])
-    j_high.append(np.where(sds == sds_sorted[-50000-val])[1])
-    i_low.append(np.where(sds == sds_sorted[val+10])[0])
-    j_low.append(np.where(sds == sds_sorted[val+10])[1])
-    i_med.append(np.where(sds == sds_sorted[2100000+val])[0])
-    j_med.append(np.where(sds == sds_sorted[2100000+val])[1])
-    
-i_rand = np.random.randint(5, 2045, 100)
-j_rand = np.random.randint(5, 2045, 100)
+    if det=='all':
+         sds_cent = sds_cent.flatten()
+    elif det=='1':
+        sds_cent = sds_cent[0].flatten()
+    elif det=='2':
+        sds_cent = sds_cent[1].flatten()
+    elif det=='3':
+        sds_cent = sds_cent[2].flatten()
+    return sds_cent
+        
+def sds_ref(det='all'):
+    '''
+    Function to extract just the reference pixel standard deviations
+    Inputs:
+    det: which detector to use (default is all)
+    '''
+    det=str(det)
+    sds_ref_1 = np.concatenate((all_sds[0,2044:2047,:].flatten(), all_sds[0,4:2044,0:4].flatten()))
+    sds_ref_2 = np.concatenate((all_sds[1,2044:2047,:].flatten(), all_sds[1,4:2044,0:4].flatten(),\
+                                all_sds[1,4:2044,2044:2047].flatten()))
+    sds_ref_3 = np.concatenate((all_sds[2,2044:2047,:].flatten(), all_sds[2,4:2044,0:4].flatten(),\
+                                all_sds[2,4:2044,2044:2047].flatten()))
+    sds_ref_3_sides = np.concatenate((all_sds[0,4:2044,2044:2047].flatten(), all_sds[0,4:2044,0:4].flatten()))
+    sds_ref_3_top_bottom = np.concatenate((all_sds[0,2044:2047,:].flatten(), all_sds[0,0:4,:].flatten()))
 
-##Plot of standard deviations
-    
-bins = np.arange(0,63000,0.01)
-hist, bin_edges = np.histogram(sds_sorted, bins)
+    if det=='all':
+        sds_ref_data = np.concatenate((sds_ref_1, sds_ref_2, sds_ref_3))
+    elif det=='1':
+        sds_ref_data = sds_ref_1
+    elif det=='2':
+        sds_ref_data = sds_ref_2
+    elif det=='3':
+        sds_ref_data = sds_ref_3
+    return sds_ref_data
+
+#Make plots
+
+#plots of means
+bins_all = np.arange(-600,10000,0.25)
+hist_all, bin_edges_all = np.histogram(means(3), bins_all)
 plt.figure()
-plt.semilogy(bin_edges[:-1]+0.05, hist, label='all_data')
-plt.xlim(0,40)
-plt.xlabel("Standard Deviation")
-plt.ylabel("Log Count")
-plt.title("Histogram of Standard Deviations of Pixels")
-plt.savefig("../../images/"+str(month)+"st-devs-all.png")
-
-bins_ref = np.arange(0,66,0.1)
-hist_ref,bin_edges_ref = np.histogram(sds_ref, bins_ref)
-plt.figure()
-plt.semilogy(bin_edges_ref[:-1]+0.05, hist_ref, label='ref_data')
-plt.xlim(0,40)
-plt.xlabel("Standard Deviation")
-plt.ylabel("Log Count")
-plt.title("Histogram of Standard Deviations of Reference Pixels")
-plt.savefig("../../images/"+str(month)+"st-devs-ref.png")
-
-##Plot of means
-
-bins_all = np.arange(-600,10000,0.1)
-hist_all, bin_edges_all = np.histogram(means, bins_all)
-plt.figure()
-plt.semilogy(bin_edges_all[:-1]+0.05, hist_all, label='all data')
-plt.xlim(-60,120)
+plt.semilogy(bin_edges_all[:-1]+0.125, hist_all, label='all data')
+plt.xlim(-5,10)
 plt.xlabel("Mean")
 plt.ylabel("Count")
 plt.title("Histogram of Means of Pixels")
-plt.savefig("../../images/"+str(month)+"means-all.png")
+#plt.savefig("../../images/"+str(month)+"/means-all.png")
 
-bins_ref = np.arange(-400,610,0.5)
-hist_ref, bin_edges_ref = np.histogram(means_ref, bins_ref)
+bins_ref = np.arange(-400,610,0.25)
+hist_ref, bin_edges_ref = np.histogram(means_ref(3), bins_ref)
 plt.figure()
-plt.semilogy(bin_edges_ref[:-1]+0.25, hist_ref, label='ref pixels')
-plt.xlim(-60,120)
+plt.semilogy(bin_edges_ref[:-1]+0.125, hist_ref, label='ref pixels')
+plt.xlim(-5,10)
 plt.xlabel("Mean")
 plt.ylabel("Count")
 plt.title("Histogram of Means of Reference Pixels")
-plt.savefig("../../images/"+str(month)+"means-ref.png")
+#plt.savefig("../../images/"+str(month)+"/means-ref.png")
 
+     
+#plots of standard deviations
+bins = np.arange(0,63000,0.25)
+hist, bin_edges = np.histogram(sds(3), bins)
+plt.figure()
+plt.semilogy(bin_edges[:-1]+0.125, hist, label='all_data')
+plt.xlim(0,10)
+plt.xlabel("Standard Deviation")
+plt.ylabel("Log Count")
+plt.title("Histogram of Standard Deviations of Pixels")
+#plt.savefig("../../images/"+str(month)+"/st-devs-all.png")
+
+bins_ref = np.arange(0,66,0.25)
+hist_ref,bin_edges_ref = np.histogram(sds_ref(3), bins_ref)
+plt.figure()
+plt.semilogy(bin_edges_ref[:-1]+0.125, hist_ref, label='ref_data')
+plt.xlim(0,10)
+plt.xlabel("Standard Deviation")
+plt.ylabel("Log Count")
+plt.title("Histogram of Standard Deviations of Reference Pixels")
+#plt.savefig("../../images/"+str(month)+"/st-devs-ref.png")
+
+'''
 ##Plot of correlation
 
 ##sds_cut = sds[1460:1500,1460:1500].flatten()
@@ -168,7 +180,9 @@ plt.ylabel("Standard Deviation")
 plt.title("Correlation Plot Between Mean and Standard Deviation")
 plt.savefig("../../images/"+str(month)+"correlation-high.png")
 
-
-os.chdir("/Data/routledge/KMOS")
+'''
+os.chdir("/Data/routledge/KMOS/code")
 
 plt.show()
+
+
