@@ -4,7 +4,7 @@ the underlying distribution of the pixel values.
 
 Created By: Laurence Routledge
 Created On: 15/11/2016
-Last Modified: 16/02/2017
+Last Modified: 17/02/2017
 """
 
 import os
@@ -15,7 +15,8 @@ import matplotlib.pyplot as plt
 from astropy.io import fits
 from scipy.interpolate import spline
 
-month='sept'
+month='oct'
+prefix="/Data/routledge/KMOS/"
 os.chdir("/Data/routledge/KMOS/data/"+str(month))    #directory containing the data
 
 #load in the mean and variance data (see 'kmos.py')
@@ -42,6 +43,7 @@ def means(det='all'):
 
     if det=='all':
         means_cent = means_cent.flatten()
+        np.save(prefix+"data//"+month+"//means_cent", means_cent)
     elif det=='1':
         means_cent = means_cent[0].flatten()
     elif det=='2':
@@ -57,15 +59,16 @@ def means_ref(det='all'):
     det: which detector to use (default is all)
     '''
     det=str(det)
-    means_ref_1 = np.concatenate((all_means[0,2044:2047,:].flatten(), all_means[0,4:2044,0:4].flatten()))
-    means_ref_2 = np.concatenate((all_means[1,2044:2047,:].flatten(), all_means[1,4:2044,0:4].flatten(),\
-                                  all_means[1,4:2044,2044:2047].flatten()))
-    means_ref_3 = np.concatenate((all_means[2,2044:2047,:].flatten(), all_means[2,4:2044,0:4].flatten(),\
-                                  all_means[2,4:2044,2044:2047].flatten()))
-    means_ref_3_sides = np.concatenate((all_means[2,4:2044,2044:2047].flatten(), all_means[2,4:2044,0:4].flatten()))
-    means_ref_3_top = all_means[2,2044:2047,:].flatten()
+    means_ref_1 = np.concatenate((all_means[0,2044:,:].flatten(), all_means[0,4:2044,0:4].flatten()))
+    means_ref_2 = np.concatenate((all_means[1,2044:,:].flatten(), all_means[1,4:2044,0:4].flatten(),\
+                                  all_means[1,4:2044,2044:].flatten()))
+    means_ref_3 = np.concatenate((all_means[2,2044:,:].flatten(), all_means[2,4:2044,0:4].flatten(),\
+                                  all_means[2,4:2044,2044:].flatten()))
+    means_ref_3_sides = np.concatenate((all_means[2,4:2044,2044:].flatten(), all_means[2,4:2044,0:4].flatten()))
+    means_ref_3_top = all_means[2,2044:,:].flatten()
     if det=='all':
         means_ref_data = np.concatenate((means_ref_1, means_ref_2, means_ref_3))
+        np.save(prefix+"data//"+month+"//means_ref", means_ref_data)
     elif det=='1':
         means_ref_data = means_ref_1
     elif det=='2':
@@ -85,6 +88,7 @@ def sds(det='all'):
 
     if det=='all':
          sds_cent = sds_cent.flatten()
+         np.save(prefix+"data//"+month+"//sds_cent", sds_cent)
     elif det=='1':
         sds_cent = sds_cent[0].flatten()
     elif det=='2':
@@ -100,16 +104,19 @@ def sds_ref(det='all'):
     det: which detector to use (default is all)
     '''
     det=str(det)
-    sds_ref_1 = np.concatenate((all_sds[0,2044:2047,:].flatten(), all_sds[0,4:2044,0:4].flatten()))
-    sds_ref_2 = np.concatenate((all_sds[1,2044:2047,:].flatten(), all_sds[1,4:2044,0:4].flatten(),\
-                                all_sds[1,4:2044,2044:2047].flatten()))
-    sds_ref_3 = np.concatenate((all_sds[2,2044:2047,:].flatten(), all_sds[2,4:2044,0:4].flatten(),\
-                                all_sds[2,4:2044,2044:2047].flatten()))
-    sds_ref_3_sides = np.concatenate((all_sds[0,4:2044,2044:2047].flatten(), all_sds[0,4:2044,0:4].flatten()))
-    sds_ref_3_top_bottom = np.concatenate((all_sds[0,2044:2047,:].flatten(), all_sds[0,0:4,:].flatten()))
+    sds_ref_1 = np.concatenate((all_sds[0,2044:,:].flatten(), all_sds[0,4:2044,0:4].flatten()))
+    sds_ref_2 = np.concatenate((all_sds[1,2044:,:].flatten(), all_sds[1,4:2044,0:4].flatten(),\
+                                all_sds[1,4:2044,2044:].flatten()))
+    sds_ref_3 = np.concatenate((all_sds[2,2044:,:].flatten(), all_sds[2,4:2044,0:4].flatten(),\
+                                all_sds[2,4:2044,2044:].flatten()))
+    sds_ref_3_sides = np.concatenate((all_sds[2,4:2044,2044:].flatten(), all_sds[2,4:2044,0:4].flatten()))
+    sds_ref_3_slice = np.concatenate((all_sds[2,4:2044,2034:2038].flatten(), all_sds[2,4:2044,10:14].flatten()))
+    sds_ref_3_top_bottom = np.concatenate((all_sds[2,2044:,:].flatten(), all_sds[2,0:4,:].flatten()))
+    sds_ref_3_top = all_sds[2,2044:,:].flatten()
 
     if det=='all':
         sds_ref_data = np.concatenate((sds_ref_1, sds_ref_2, sds_ref_3))
+        np.save(prefix+"data//"+month+"//sds_ref",sds_ref_data)
     elif det=='1':
         sds_ref_data = sds_ref_1
     elif det=='2':
@@ -129,7 +136,7 @@ plt.xlim(-5,10)
 plt.xlabel("Mean")
 plt.ylabel("Count")
 plt.title("Histogram of Means of Pixels")
-#plt.savefig("../../images/"+str(month)+"/means-all.png")
+#plt.savefig("../../images/"+str(month)+"/means-cent.png")
 
 bins_ref = np.arange(-400,610,0.25)
 hist_ref, bin_edges_ref = np.histogram(means_ref(3), bins_ref)
@@ -151,7 +158,7 @@ plt.xlim(0,10)
 plt.xlabel("Standard Deviation")
 plt.ylabel("Log Count")
 plt.title("Histogram of Standard Deviations of Pixels")
-#plt.savefig("../../images/"+str(month)+"/st-devs-all.png")
+#plt.savefig("../../images/"+str(month)+"/st-devs-cent.png")
 
 bins_ref = np.arange(0,66,0.25)
 hist_ref,bin_edges_ref = np.histogram(sds_ref(3), bins_ref)
@@ -160,8 +167,8 @@ plt.semilogy(bin_edges_ref[:-1]+0.125, hist_ref, label='ref_data')
 plt.xlim(0,10)
 plt.xlabel("Standard Deviation")
 plt.ylabel("Log Count")
-plt.title("Histogram of Standard Deviations of Reference Pixels")
-#plt.savefig("../../images/"+str(month)+"/st-devs-ref.png")
+plt.title("Histogram of Standard Deviations of Slice of Pixels")
+plt.savefig("../../images/"+str(month)+"/st-devs-ref.png")
 
 '''
 ##Plot of correlation
